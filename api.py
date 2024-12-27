@@ -53,8 +53,7 @@ agent = TravelAgent(openai_api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.post("/api/v1/generate-itinerary")
 async def generate_itinerary(request: TravelRequest):
-    logger.info(f"Received itinerary request for {
-                request.from_location} to {request.to_location}")
+        logger.info(f"Received itinerary request for {request.from_location} to {request.to_location}")
     try:
         itinerary = agent.generate_itinerary(request.model_dump())
         logger.info("Itinerary generated successfully")

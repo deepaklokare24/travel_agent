@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 def get_transportation(from_location: str, to_location: str, travel_date: str) -> List[str]:
     """Get real transportation options between two locations using SERP API."""
-    logger.info(f"Fetching transportation options from {
-                from_location} to {to_location}")
+    logger.info(f"Fetching transportation options from {from_location} to {to_location}")
     try:
         search_query = f"transportation from {from_location} to {to_location}"
         logger.debug(f"SERP API search query: {search_query}")
@@ -37,8 +36,7 @@ def get_transportation(from_location: str, to_location: str, travel_date: str) -
                     "description": result.get("snippet", ""),
                     "link": result["link"]
                 })
-            logger.info(
-                f"Found {len(transportation_options)} transportation options")
+            logger.info(f"Found {len(transportation_options)} transportation options")
         else:
             logger.warning(
                 "No transportation results found in SERP API response")
