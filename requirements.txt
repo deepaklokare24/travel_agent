@@ -1,0 +1,26 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-core>=0.0.9
+langchain-openai>=0.0.5
+langchain-community>=0.0.13
+openai>=1.6.1
+
+# Tool-specific dependencies
+python-dotenv==1.0.0
+google-search-results==2.4.2  # For SerpAPI
+tavily-python>=0.3.1
+faiss-cpu>=1.7.4
+tiktoken>=0.5.2
+pyowm>=3.3.0  # For OpenWeatherMap
+
+# API dependencies
+fastapi>=0.104.1
+uvicorn>=0.24.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+email-validator>=2.1.0
+
+# Optional dependencies for better performance
+numpy>=1.24.0
+requests>=2.31.0
+aiohttp>=3.9.0
