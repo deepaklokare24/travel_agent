@@ -10,7 +10,7 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Update with your frontend's URL
+    allow_origins=["http://localhost:3000", "https://travelagent-production.up.railway.app"],  # Update with your frontend's URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,7 +48,18 @@ class TravelRequest(BaseModel):
 
 
 # Initialize the travel agent with the OpenAI API key
-agent = TravelAgent(openai_api_key=os.getenv("OPENAI_API_KEY"))
+logger.info("Environment Variables:")
+logger.info(f"OPENAI_API_KEY present: {'OPENAI_API_KEY' in os.environ}")
+logger.info(f"SERPAPI_API_KEY present: {'SERPAPI_API_KEY' in os.environ}")
+logger.info(f"TAVILY_API_KEY present: {'TAVILY_API_KEY' in os.environ}")
+logger.info(f"OPENWEATHERMAP_API_KEY present: {'OPENWEATHERMAP_API_KEY' in os.environ}")
+
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    logger.error("OPENAI_API_KEY environment variable is not set!")
+    raise ValueError("OPENAI_API_KEY environment variable is not set!")
+
+agent = TravelAgent(openai_api_key=openai_api_key)
 
 
 @app.post("/api/v1/generate-itinerary")
