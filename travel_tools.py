@@ -38,12 +38,10 @@ def get_transportation(from_location: str, to_location: str, travel_date: str) -
                 })
             logger.info(f"Found {len(transportation_options)} transportation options")
         else:
-            logger.warning(
-                "No transportation results found in SERP API response")
+            logger.warning("No transportation results found in SERP API response")
         return transportation_options
     except Exception as e:
-        logger.error(f"Error getting transportation info: {
-                     str(e)}", exc_info=True)
+        logger.error(f"Error getting transportation info: {str(e)}", exc_info=True)
         return []
 
 
@@ -95,8 +93,7 @@ def get_weather_forecast(location: str, date: str) -> Dict[str, Union[float, str
         logger.info(f"Weather data retrieved successfully for {location}")
         return weather_data
     except Exception as e:
-        logger.error(f"Error getting weather forecast: {
-                     str(e)}", exc_info=True)
+        logger.error(f"Error getting weather forecast: {str(e)}", exc_info=True)
         return {}
 
 
