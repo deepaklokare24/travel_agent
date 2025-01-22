@@ -50,7 +50,7 @@ class TravelRequest(BaseModel):
 # Initialize the travel agent with the OpenAI API key
 logger.info("Environment Variables:")
 logger.info(f"OPENAI_API_KEY present: {'OPENAI_API_KEY' in os.environ}")
-logger.info(f"SERPAPI_API_KEY present: {'SERPAPI_API_KEY' in os.environ}")
+logger.info(f"GOOGLE_MAPS_API_KEY present: {'GOOGLE_MAPS_API_KEY' in os.environ}")
 logger.info(f"TAVILY_API_KEY present: {'TAVILY_API_KEY' in os.environ}")
 logger.info(f"OPENWEATHERMAP_API_KEY present: {'OPENWEATHERMAP_API_KEY' in os.environ}")
 

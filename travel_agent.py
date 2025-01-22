@@ -151,8 +151,9 @@ End with practical travel tips."""
 
 
 def main():
+    openai_api_key = os.getenv("OPENAI_API_KEY")
     # Example usage
-    agent = TravelAgent(openai_api_key="your_openai_api_key")
+    agent = TravelAgent(openai_api_key=openai_api_key)
 
     # Example itinerary request
     itinerary = agent.generate_itinerary(

@@ -3,9 +3,9 @@ import requests
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from serpapi import GoogleSearch
 from tavily import TavilyClient
 import logging
+from googlemaps import Client as GoogleMapsClient
 
 load_dotenv()
 
@@ -14,31 +14,34 @@ logger = logging.getLogger(__name__)
 
 
 def get_transportation(from_location: str, to_location: str, travel_date: str) -> List[str]:
-    """Get real transportation options between two locations using SERP API."""
+    """Get transportation options between two locations using Google Maps Directions API."""
     logger.info(f"Fetching transportation options from {from_location} to {to_location}")
     try:
-        search_query = f"transportation from {from_location} to {to_location}"
-        logger.debug(f"SERP API search query: {search_query}")
-
-        search = GoogleSearch({
-            "q": search_query,
-            "api_key": os.getenv("SERPAPI_API_KEY")
-        })
-        results = search.get_dict()
-        logger.debug(f"SERP API raw response: {results}")
-
+        gmaps = GoogleMapsClient(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+        
+        # Get directions with alternative routes
+        directions = gmaps.directions(
+            from_location,
+            to_location,
+            mode="transit",  # Gets public transportation options
+            alternatives=True,
+            transit_mode=["bus", "train", "subway", "train"]
+        )
+        
         transportation_options = []
-        if "organic_results" in results:
-            for result in results["organic_results"][:5]:
-                transportation_options.append({
-                    "type": "transportation",
-                    "title": result["title"],
-                    "description": result.get("snippet", ""),
-                    "link": result["link"]
-                })
-            logger.info(f"Found {len(transportation_options)} transportation options")
-        else:
-            logger.warning("No transportation results found in SERP API response")
+        for route in directions[:5]:
+            legs = route.get("legs", [])[0]
+            steps = legs.get("steps", [])
+            
+            option = {
+                "type": "transportation",
+                "title": f"From {legs.get('start_address')} to {legs.get('end_address')}",
+                "description": f"Duration: {legs.get('duration', {}).get('text')}, Distance: {legs.get('distance', {}).get('text')}",
+                "steps": [step.get("html_instructions") for step in steps]
+            }
+            transportation_options.append(option)
+            
+        logger.info(f"Found {len(transportation_options)} transportation options")
         return transportation_options
     except Exception as e:
         logger.error(f"Error getting transportation info: {str(e)}", exc_info=True)
@@ -138,57 +141,84 @@ def get_attractions(location: str) -> List[Dict[str, Union[str, float, int]]]:
 
 
 def get_restaurants(location: str) -> List[Dict[str, Union[str, float, int]]]:
-    """Get real restaurant recommendations using SERP API."""
+    """Get restaurant recommendations using Google Places API."""
     try:
-        search_query = f"best restaurants in {location}"
-        search = GoogleSearch({
-            "q": search_query,
-            "api_key": os.getenv("SERPAPI_API_KEY")
-        })
-        results = search.get_dict()
-
+        gmaps = GoogleMapsClient(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+        
+        # First, get the location coordinates
+        geocode_result = gmaps.geocode(location)
+        if not geocode_result:
+            return []
+            
+        location_coords = geocode_result[0]['geometry']['location']
+        lat = location_coords['lat']
+        lng = location_coords['lng']
+        
+        # Search for restaurants
+        places_result = gmaps.places_nearby(
+            location=(lat, lng),
+            radius=5000,  # 5km radius
+            type='restaurant'
+        )
+        
         restaurants = []
-        if "organic_results" in results:
-            for result in results["organic_results"][:5]:
-                restaurants.append({
-                    "name": result["title"],
-                    "description": result.get("snippet", ""),
-                    "url": result["link"],
-                    "rating": result.get("rating", 4.0),
-                    "cuisine": "Local",  # You might want to extract this from the description
-                    "price_level": "$$"  # This could be extracted from the data if available
-                })
+        for place in places_result.get('results', [])[:5]:
+            # Get detailed information for each place
+            detail_result = gmaps.place(place['place_id'], fields=['name', 'formatted_address', 'rating', 'price_level', 'website', 'formatted_phone_number'])
+            detail = detail_result.get('result', {})
+            
+            restaurants.append({
+                "name": detail.get('name', ''),
+                "description": f"Located at: {detail.get('formatted_address', '')}",
+                "url": detail.get('website', ''),
+                "rating": detail.get('rating', 4.0),
+                "cuisine": place.get('types', ['Local'])[0].replace('_', ' ').title(),
+                "price_level": '$' * (detail.get('price_level', 2) or 2)
+            })
         return restaurants
     except Exception as e:
-        print(f"Error getting restaurants: {e}")
+        logger.error(f"Error getting restaurants: {str(e)}", exc_info=True)
         return []
 
 
 def get_hotels(location: str, check_in: str) -> List[Dict[str, Union[str, float, int]]]:
-    """Get real hotel recommendations using SERP API."""
+    """Get hotel recommendations using Google Places API."""
     try:
-        search_query = f"hotels in {location}"
-        search = GoogleSearch({
-            "q": search_query,
-            "api_key": os.getenv("SERPAPI_API_KEY")
-        })
-        results = search.get_dict()
-
+        gmaps = GoogleMapsClient(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+        
+        # First, get the location coordinates
+        geocode_result = gmaps.geocode(location)
+        if not geocode_result:
+            return []
+            
+        location_coords = geocode_result[0]['geometry']['location']
+        lat = location_coords['lat']
+        lng = location_coords['lng']
+        
+        # Search for hotels
+        places_result = gmaps.places_nearby(
+            location=(lat, lng),
+            radius=5000,  # 5km radius
+            type='lodging'
+        )
+        
         hotels = []
-        if "organic_results" in results:
-            for result in results["organic_results"][:5]:
-                hotels.append({
-                    "name": result["title"],
-                    "description": result.get("snippet", ""),
-                    "url": result["link"],
-                    "rating": result.get("rating", 4.0),
-                    "location": location,
-                    # This could be extracted from the description
-                    "amenities": ["WiFi"]
-                })
+        for place in places_result.get('results', [])[:5]:
+            # Get detailed information for each place
+            detail_result = gmaps.place(place['place_id'], fields=['name', 'formatted_address', 'rating', 'price_level', 'website', 'formatted_phone_number'])
+            detail = detail_result.get('result', {})
+            
+            hotels.append({
+                "name": detail.get('name', ''),
+                "description": f"Located at: {detail.get('formatted_address', '')}",
+                "url": detail.get('website', ''),
+                "rating": detail.get('rating', 4.0),
+                "location": location,
+                "amenities": [amenity.replace('_', ' ').title() for amenity in place.get('types', [])]
+            })
         return hotels
     except Exception as e:
-        print(f"Error getting hotels: {e}")
+        logger.error(f"Error getting hotels: {str(e)}", exc_info=True)
         return []
 
 
