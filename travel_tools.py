@@ -13,39 +13,115 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def get_transportation(from_location: str, to_location: str, travel_date: str) -> List[str]:
+def get_transportation(from_location: str, to_location: str, travel_date: str, mode: str = "mixed") -> List[str]:
     """Get transportation options between two locations using Google Maps Directions API."""
-    logger.info(f"Fetching transportation options from {from_location} to {to_location}")
+    logger.info(f"Fetching transportation options from {from_location} to {to_location} with mode {mode}")
     try:
         gmaps = GoogleMapsClient(key=os.getenv("GOOGLE_MAPS_API_KEY"))
-        
-        # Get directions with alternative routes
-        directions = gmaps.directions(
-            from_location,
-            to_location,
-            mode="transit",  # Gets public transportation options
-            alternatives=True,
-            transit_mode=["bus", "train", "subway", "train"]
-        )
-        
         transportation_options = []
-        for route in directions[:5]:
-            legs = route.get("legs", [])[0]
-            steps = legs.get("steps", [])
-            
-            option = {
+
+        # Handle flight mode separately with a default message
+        if mode == "flight":
+            return [{
                 "type": "transportation",
-                "title": f"From {legs.get('start_address')} to {legs.get('end_address')}",
-                "description": f"Duration: {legs.get('duration', {}).get('text')}, Distance: {legs.get('distance', {}).get('text')}",
-                "steps": [step.get("html_instructions") for step in steps]
-            }
-            transportation_options.append(option)
-            
+                "title": f"Flight options from {from_location} to {to_location}",
+                "description": "Flight booking is currently not supported in the app",
+                "steps": [
+                    "Please check popular flight booking websites:",
+                    "- Google Flights",
+                    "- Skyscanner",
+                    "- Kayak",
+                    "- Your preferred airline's website",
+                    f"Search for flights from {from_location} to {to_location} for {travel_date}"
+                ]
+            }]
+
+        # Define modes to check based on user preference
+        if mode == "car":
+            modes_to_check = [("driving", None)]  # Only check driving routes
+        elif mode == "train":
+            modes_to_check = [("transit", ["rail", "train"])]  # Only check train routes
+        else:  # "mixed" or any other option
+            modes_to_check = [
+                ("transit", ["bus", "train", "subway"]),  # Public transit
+                ("driving", None),  # Driving option
+            ]
+
+        for travel_mode, transit_modes in modes_to_check:
+            try:
+                # Configure the request based on mode
+                params = {
+                    "mode": travel_mode,
+                    "alternatives": True,
+                }
+                if transit_modes:
+                    params["transit_mode"] = transit_modes
+
+                directions = gmaps.directions(
+                    from_location,
+                    to_location,
+                    **params
+                )
+
+                if directions:
+                    for route in directions[:2]:  # Limit to 2 options per mode
+                        legs = route.get("legs", [])[0]
+                        steps = legs.get("steps", [])
+                        
+                        # For driving mode, add parking and rest stop suggestions
+                        if travel_mode == "driving":
+                            option = {
+                                "type": "transportation",
+                                "title": f"Driving from {legs.get('start_address')} to {legs.get('end_address')}",
+                                "description": f"Duration: {legs.get('duration', {}).get('text')}, Distance: {legs.get('distance', {}).get('text')}",
+                                "steps": [
+                                    *[step.get("html_instructions") for step in steps if step.get("html_instructions")],
+                                    "Suggested stops every 2-3 hours for rest",
+                                    "Check parking options at your destination",
+                                    "Ensure your vehicle is serviced for long-distance travel",
+                                    f"Estimated fuel cost based on distance: ${calculate_fuel_cost(legs.get('distance', {}).get('value', 0)):.2f}"
+                                ]
+                            }
+                        else:
+                            option = {
+                                "type": "transportation",
+                                "title": f"Public Transit from {legs.get('start_address')} to {legs.get('end_address')}",
+                                "description": f"Duration: {legs.get('duration', {}).get('text')}, Distance: {legs.get('distance', {}).get('text')}",
+                                "steps": [step.get("html_instructions") for step in steps if step.get("html_instructions")]
+                            }
+                        transportation_options.append(option)
+            except Exception as mode_error:
+                logger.warning(f"Error getting {travel_mode} directions: {str(mode_error)}")
+                continue
+        
+        # If no options found, provide a helpful message
+        if not transportation_options:
+            return [{
+                "type": "transportation",
+                "title": f"No direct routes found from {from_location} to {to_location}",
+                "description": "Consider checking alternative transportation methods",
+                "steps": [
+                    "Consider breaking your journey into smaller segments",
+                    "Check with local transportation authorities",
+                    "Consider alternative travel dates",
+                    "Look for multi-modal transportation options"
+                ]
+            }]
+        
         logger.info(f"Found {len(transportation_options)} transportation options")
         return transportation_options
     except Exception as e:
         logger.error(f"Error getting transportation info: {str(e)}", exc_info=True)
         return []
+
+
+def calculate_fuel_cost(distance_meters: int) -> float:
+    """Calculate estimated fuel cost based on distance."""
+    # Average fuel consumption: 25 miles per gallon
+    # Average fuel price: $3.50 per gallon (you might want to get real-time prices)
+    miles = distance_meters * 0.000621371  # Convert meters to miles
+    gallons = miles / 25  # Assuming 25 mpg
+    return gallons * 3.50  # Assuming $3.50 per gallon
 
 
 def get_weather_forecast(location: str, date: str) -> Dict[str, Union[float, str, int]]:

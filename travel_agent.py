@@ -60,7 +60,11 @@ class TravelAgent:
 
         # Get trip information
         transportation_options = get_transportation(
-            from_location, to_location, start_date)
+            from_location,
+            to_location,
+            start_date,
+            mode=preferences.get("transportation", "mixed")
+        )
         weather = get_weather_forecast(to_location, start_date)
         attractions = get_attractions(to_location)
         restaurants = get_restaurants(to_location)
